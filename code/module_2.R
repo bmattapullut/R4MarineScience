@@ -118,4 +118,106 @@ sub_islands <- filter(penguins, island %in% c("Dream", "Torgersen"))
 
 ### 1.7.3 Ordering sequences with arrange() ####
 
+## arrange() - alters the sorting configuration of rows within data frame without changing individial cell values
+## essential for inspecting size hierarchies or chronologically ordering long-term environmental observation lines:
+
+# Sort penguins by ascending body mass (Default setting: Smallest mass first)
+lightest_first <- arrange(penguins, body_mass_g)
+
+# Sort penguins in descending sequence using the desc() layout wrapper
+heaviest_first <- arrange(penguins, desc(body_mass_g))
+
+# Execute nested sorting criteria: Group by species, then sort by descending bill length
+stratified_morphology <- arrange(penguins, species, desc(bill_length_mm))
+
+### 1.7.4 Introducing the Pipe (|>)
+
+# we have been performing data operations one step at a time
+# this creates "intermediate" variables to hold the result of each stage
+# this is good for clarity but it can quickly clutter your environment with objects like data_v1, data_v2
+
+# pipe : a cleaner way to chain the operations together
+# pipe acts a recipe for your data
+
+#Without pipe
+## You have to read the code "inside-out." You start in the middle, perform the mutate(), then wrap that in a filter(), and finally wrap that all in a select().
+
+#With pipe
+## You read from left to right, or top to bottom. You take your data, then you filter it, then you mutate it to create a new column, then you select the columns you need.
+## easier to read, debug efficient
+
+## syntax for pipe: |>
+## pipe operator built in tidyverse package magrittr - %>%
+
+# instead of 
+penguins_subset <- mutate(penguins, bill_ratio = bill_length_mm / bill_depth_mm)
+penguins_final <- filter(penguins_subset, species == "Adelie")
+
+# you can use pipe 
+penguins_final <- penguins |>
+  mutate(bill_ratio = bill_length_mm / bill_depth_mm) |>
+  filter(species == "Adelie")
+
+
+### 1.7.5 Computing new attributes with mutate() ####
+
+## calculate new variables based on ones that exist in our raw data
+## this might be to scale observations, apply standard geometric conversions, or compute morphological ratios.
+## In data wrangling we call this “mutating” a new variable
+## mutate() - to modify existing attributes or append entirely new vectors to the data frame
+
+# Calculate a new morphological ratio in our environment
+penguin_ratios <- penguins  |> 
+  mutate(body_mass_kg = body_mass_g / 1000,   # Convert grams to kilograms
+         bill_ratio = bill_length_mm / bill_depth_mm  # Bill ratio
+  )
+
+# View your newly engineered variables appended to the far-right columns
+glimpse(penguin_ratios)
+
+
+## 1.8 Data aggregation and ecological summarisation ####
+
+# To extract ecological stories (e.g., morphological traits by species/island), 
+# we compress individual observations into population summary metrics:
+
+# 1. group_by()  -> Creates hidden, virtual data buckets based on categories 
+#                   without changing the physical appearance of the table.
+# 2. summarise() -> Calculates statistical reductions for each virtual bucket 
+#                   and collapses them into a brand-new summary tibble, if it is immediately used after group_by()
+
+# Grouping our active memory penguins by species
+grouped_penguins <- group_by(penguins, species)
+
+# Notice that the table looks identical, but metadata notes 'Groups: species [3]'
+print(grouped_penguins)
+
+# Collapsing the buckets into explicit summary metrics
+species_mass_summary <- summarise(grouped_penguins,
+                                  mean_mass_g = mean(body_mass_g)
+)
+
+print(species_mass_summary)
+
+# In console summary operation failed and returned entire column of NA values for certain groups
+# WHY???
+# Problem: Summary functions return NA for entire groups if a single row has an NA.
+# Reason:  R's "Missing Value Trap" protects you from miscalculating incomplete data.
+# Fix:     Use the magrittr pipe (%>%) and explicitly declare 'na.rm = TRUE' 
+#          inside aggregation functions to safely drop missing cells.
+
+# Overcoming the missing value trap using na.rm = TRUE
+biological_signal <- penguins %>%
+  group_by(species, sex) %>%
+  summarise(
+    sample_size = n(),                                     # Count total individuals per category
+    mean_mass_g = mean(body_mass_g, na.rm = TRUE),         # Calculate mean ignoring missing cells
+    sd_mass_g   = sd(body_mass_g, na.rm = TRUE)            # Standard deviation calculation
+  )
+
+print(biological_signal)
+
+## Combining the verbs successfully compressed a long observational log into a tight, clean overview of sexual dimorphism and species variation across the study area
+
+## 1.9 Integrating data grammar with visual diagnostics in qmd ####
 
