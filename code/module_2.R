@@ -221,7 +221,20 @@ print(biological_signal)
 
 ## 1.9 Integrating data grammar with visual diagnostics in qmd ####
 
+###1.9.1 Wrangling and plotting in parallel ####
+
+## this method is best used when You need to save the summary table (as a .csv or .rds file) for inclusion in your final report or to share with team members
+
+#create a code chunk that follows the two tasks side by side: 1. 
+#pipe the penguin data to group_by() and summarise() to calculate the mean body mass for each species and island. 
+#pipe the penguin dataset into ggplot() to create boxplot of body_mass_g by species, with island variable mapped to facet_wrap()
+  
+  
+  
 ### 1.9.2 Piping Directly to visualisation ####
+
+## this method is best used when You are in the exploration phase, iterating through visualisations rapidly to find the most effective way to communicate your findings.
+
 
 # Pipe directly from aggregation to plotting with error bars
 
@@ -249,43 +262,44 @@ mass_compare_plot
 # CHallenge
 #  Experiment with swapping sd_mass (standard deviation) for standard error—you will need to divide your sd by the square root of n (sd / sqrt(n)).
 
-#swap 
-group_by(species, island) |>
-  summarise(
-    mean_mass = mean(body_mass_g, na.rm = TRUE),
-    sd_mass = sd(body_mass_g, na.rm = TRUE),
-    n = n(),
-    .groups = "drop"
-  ) |>
-  ggplot(aes(x = species, y = mean_mass, colour = island)) +
-  geom_point(size = 3) +
-  geom_errorbar(aes(ymin = mean_mass - sd_mass, 
-                    ymax = mean_mass + sd_mass), 
-                width = 0.2) +
-  labs(title = "Mean Body Mass by Species and Island",
-       subtitle = "Error bars represent standard deviation",
-       y = "Mean Body Mass (g)",
-       x = "Species") +
-  theme_minimal()
-
-mass_compare_plot
+#swap sd_mass (standard deviation) for standard error—you will need to divide your sd by the square root of n (sd / sqrt(n)).
+  
 mass_compare_plot <- penguins |>
   group_by(species, island) |>
   summarise(
     mean_mass = mean(body_mass_g, na.rm = TRUE),
-    sd_mass = sd(body_mass_g, na.rm = TRUE),
+    se_mass = sd(body_mass_g, na.rm = TRUE) / sqrt(n()),
     n = n(),
     .groups = "drop"
   ) |>
   ggplot(aes(x = species, y = mean_mass, colour = island)) +
   geom_point(size = 3) +
-  geom_errorbar(aes(ymin = mean_mass - sd_mass, 
-                    ymax = mean_mass + sd_mass), 
+  geom_errorbar(aes(ymin = mean_mass - se_mass, 
+                    ymax = mean_mass + se_mass), 
                 width = 0.2) +
   labs(title = "Mean Body Mass by Species and Island",
-       subtitle = "Error bars represent standard deviation",
+       subtitle = "Error bars represent standard error",
        y = "Mean Body Mass (g)",
        x = "Species") +
   theme_minimal()
 
 mass_compare_plot
+ 
+## 1.10 Saving, exporting and version milestones
+
+
+# Create output directories if they do not exist:
+if (!dir.exists("outputs/figures")) dir.create("outputs/figures") # folder for figs
+if (!dir.exists("outputs/tables")) dir.create("outputs/tables") # folder for tables
+if (!dir.exists("Rdata")) dir.create("Rdata") # folder for Rdata objects
+
+# 1. Exporting our collapsed summary table as a universal flat text file
+write_csv(biological_signal, "outputs/penguin_species_mass_summary.csv")
+
+# 2. Saving our cleaned morphological cohort table as a native R binary file
+saveRDS(clean_scientific_fields, "outputs/clean_penguin_morphology_cohort.rds")
+
+ggsave("outputs/mass_compare_plot.png", 
+       plot = mass_compare_plot, 
+       width = 120, height = 120, 
+       units = "mm", dpi = 300)
